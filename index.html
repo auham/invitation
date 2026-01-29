@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مُرسِل دعوات الزواج</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #128C7E;
@@ -334,6 +335,78 @@
             color: var(--text-secondary);
         }
 
+        /* Excel Upload */
+        .upload-section {
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #217346, #2d9254);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(33, 115, 70, 0.4);
+        }
+
+        .upload-btn .icon {
+            font-size: 1.2rem;
+        }
+
+        #excelInput {
+            display: none;
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: var(--text-secondary);
+        }
+
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .or-divider span {
+            padding: 0 15px;
+            font-size: 0.9rem;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(33, 115, 70, 0.15);
+            border-radius: 10px;
+            border-right: 4px solid #217346;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-info .file-name {
+            font-weight: 600;
+            color: #2d9254;
+        }
+
         /* Footer */
         .footer {
             text-align: center;
@@ -372,7 +445,7 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <div class="header-icon">💒</div>
+            <div class="header-icon">💍</div>
             <h1>مُرسِل دعوات الزواج</h1>
             <p>أرسل دعوات الزفاف لجميع العائلة بسهولة عبر واتساب</p>
         </header>
@@ -384,6 +457,22 @@
                 <span class="icon">👥</span>
                 قائمة المدعوين
             </h2>
+            <div class="upload-section">
+                <button class="upload-btn" onclick="document.getElementById('excelInput').click()">
+                    <span class="icon">📊</span>
+                    رفع ملف Excel
+                </button>
+                <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event)">
+                <div class="file-info" id="fileInfo">
+                    ✅ تم تحميل: <span class="file-name" id="fileName"></span> - <span id="contactCount"></span> جهة
+                    اتصال
+                </div>
+            </div>
+
+            <div class="or-divider">
+                <span>أو الصق يدوياً</span>
+            </div>
+
             <textarea id="contactsList" placeholder="الصق قائمة الأسماء والأرقام هنا...
 
 مثال:
@@ -391,8 +480,8 @@
 أحمد الخالد - 0559876543
 سارة المحمد - 0541112223"></textarea>
             <div class="hint">
-                💡 <strong>تنسيق الأرقام:</strong> اكتب الاسم ثم الرقم في كل سطر. يمكنك الفصل بـ <code>-</code> أو
-                <code>:</code> أو مسافة
+                💡 <strong>ملف Excel:</strong> يجب أن يحتوي على عمود للاسم وعمود للرقم<br>
+                💡 <strong>اللصق اليدوي:</strong> اكتب الاسم ثم الرقم في كل سطر
             </div>
         </div>
 
@@ -587,6 +676,61 @@
 
             document.getElementById('progressFill').style.width = percentage + '%';
             document.getElementById('progressText').textContent = `${sentCount} من ${total} تم الإرسال`;
+        }
+
+        // Excel Upload Handler
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // Get first sheet
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+
+                    // Convert to JSON
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                    // Parse contacts
+                    const contactLines = [];
+
+                    for (let i = 0; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (row.length >= 2) {
+                            // Assume first column is name, second is phone
+                            const name = String(row[0] || '').trim();
+                            const phone = String(row[1] || '').trim();
+
+                            if (name && phone) {
+                                contactLines.push(`${name} - ${phone}`);
+                            }
+                        } else if (row.length === 1) {
+                            // Single column - might contain both
+                            contactLines.push(String(row[0] || '').trim());
+                        }
+                    }
+
+                    // Set textarea value
+                    const textarea = document.getElementById('contactsList');
+                    textarea.value = contactLines.join('\n');
+
+                    // Show file info
+                    document.getElementById('fileName').textContent = file.name;
+                    document.getElementById('contactCount').textContent = contactLines.length;
+                    document.getElementById('fileInfo').classList.add('show');
+
+                } catch (error) {
+                    alert('حدث خطأ في قراءة الملف. تأكد من أنه ملف Excel صحيح.');
+                    console.error(error);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
         }
     </script>
 </body>
