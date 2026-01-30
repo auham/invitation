@@ -307,6 +307,33 @@
             pointer-events: none;
         }
 
+        .call-btn {
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .call-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .call-btn.done {
+            background: linear-gradient(135deg, #666, #888);
+            pointer-events: none;
+        }
+
         /* Progress */
         .progress-container {
             margin-top: 25px;
@@ -429,7 +456,8 @@
                 flex-wrap: wrap;
             }
 
-            .whatsapp-btn {
+            .whatsapp-btn,
+            .call-btn {
                 width: 100%;
                 justify-content: center;
             }
@@ -662,12 +690,26 @@
                 sentCount++;
 
                 const btn = document.getElementById(`btn-${index}`);
-                btn.classList.add('sent');
-                btn.innerHTML = '<span>✓</span> تم دعوته سابقاً';
+                const phone = contacts[index].phone;
+                const phoneUrl = `tel:+${phone}`;
+
+                // Replace WhatsApp button with Call button
+                btn.outerHTML = `
+                    <a href="${phoneUrl}" class="call-btn" id="call-btn-${index}" onclick="markCallDone(${index})">
+                        <span>📞</span>
+                        إجراء مكالمة
+                    </a>
+                `;
 
                 document.getElementById('sentCount').textContent = sentCount;
                 updateProgress();
             }
+        }
+
+        function markCallDone(index) {
+            const btn = document.getElementById(`call-btn-${index}`);
+            btn.classList.add('done');
+            btn.innerHTML = '<span>✓</span> تم التواصل';
         }
 
         function updateProgress() {
